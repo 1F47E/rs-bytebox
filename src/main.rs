@@ -1,43 +1,41 @@
-use generic_array::{typenum::U32, GenericArray};
-// use aes_gcm;
 use aes_gcm::{
     aead::{Aead, KeyInit, OsRng},
-    Aes256Gcm,
-    // Error,
-    Nonce, // Or `Aes128Gcm`
+    Aes256Gcm, Nonce,
 };
-
-// use aes_gcm::aead::AeadInPlace;
-// use aes_gcm::Aes256Gcm;
-// use aes_gcm::Nonce;
+use generic_array::{typenum::U32, GenericArray};
 
 use hkdf::Hkdf;
-// use rand::rngs::OsRng;
-// use rand::RngCore;
 use sha2::Sha256;
 use std::env;
 use std::fs::File;
 use std::io::{Read, Write};
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const NAME: &str = env!("CARGO_PKG_NAME");
+// define enum with commands
+enum Command {
+    Encrypt,
+    Decrypt,
+}
+
 fn main() {
     // get input from user
-    let command = env::args().nth(1);
+    let command_str = env::args().nth(1);
     let file_key = env::args().nth(2);
     let file_data = env::args().nth(3);
+
+    let welcome_msg = format!("{NAME} v{VERSION}\n\nUsage: ./{NAME} <command> <file_key> <file_to_encrypt>\nCommands: encrypt | decrypt");
     // check command
-    // TODO: make enum, refactor
-    let commands = vec!["encrypt", "decrypt"];
-    if command.is_none() || !commands.contains(&command.as_ref().unwrap().as_str()) {
-        println!("{} v{}\n\n", NAME, VERSION);
-        println!("Usage: ./{NAME} <command> <file_key> <file_to_encrypt>");
-        println!("Commands: {}", commands.join(", "));
-        return;
-    }
+    // convert command to enum
+    let command_opt = match command_str.unwrap().as_str() {
+        "encrypt" => Some(Command::Encrypt),
+        "decrypt" => Some(Command::Decrypt),
+        // panic
+        _ => None,
+    };
+    let command = command_opt.unwrap();
     // chek if we have full user input
     if file_key.is_none() || file_data.is_none() {
-        println!("{} v{}\n\n", NAME, VERSION);
-        println!("Usage: ./{NAME} <file_key> <file_to_encrypt>");
+        println!("{}", welcome_msg);
         return;
     }
     // unwrap user input
@@ -52,21 +50,41 @@ fn main() {
     let key_bytes = derive_key(&key, salt, 32);
     // let password_hex = hex::encode(password);
     // println!("aes key for the file is {}", password_hex);
-    if command == Some("encrypt".to_string()) {
-        // encrypt file
-        let data = read_file(&file_data);
-        println!("data file is {} bytes", data.len());
-        let enc_data = encrypt(&data, &key_bytes).unwrap();
-        file_write("enc.bin", &enc_data.to_vec());
-        println!("encrypted file is enc.bin");
-    } else if command == Some("decrypt".to_string()) {
-        // decrypt file
-        let data = read_file(&file_data);
-        println!("data file is {} bytes", data.len());
-        let dec_data = decrypt(&data, &key_bytes).unwrap();
-        file_write("plain.txt", &dec_data.to_vec());
-        println!("decrypted file is plain.txt");
+    // match command
+    match command {
+        Command::Encrypt => {
+            // encrypt file
+            let data = read_file(&file_data);
+            println!("data file is {} bytes", data.len());
+            let enc_data = encrypt(&data, &key_bytes).unwrap();
+            file_write("enc.bin", &enc_data.to_vec());
+            println!("encrypted file is enc.bin");
+        }
+        Command::Decrypt => {
+            // decrypt file
+            let data = read_file(&file_data);
+            println!("data file is {} bytes", data.len());
+            let dec_data = decrypt(&data, &key_bytes).unwrap();
+            file_write("plain.txt", &dec_data.to_vec());
+            println!("decrypted file is plain.txt");
+        }
     }
+
+    // if command == Command::Encrypt {
+    //     // encrypt file
+    //     let data = read_file(&file_data);
+    //     println!("data file is {} bytes", data.len());
+    //     let enc_data = encrypt(&data, &key_bytes).unwrap();
+    //     file_write("enc.bin", &enc_data.to_vec());
+    //     println!("encrypted file is enc.bin");
+    // } else if command == Command::Decrypt {
+    //     // decrypt file
+    //     let data = read_file(&file_data);
+    //     println!("data file is {} bytes", data.len());
+    //     let dec_data = decrypt(&data, &key_bytes).unwrap();
+    //     file_write("plain.txt", &dec_data.to_vec());
+    //     println!("decrypted file is plain.txt");
+    // }
 
     // DEBUG STUFF WIP
     // let key = Aes256Gcm::generate_key(&mut OsRng);
@@ -112,13 +130,12 @@ fn decrypt(data: &[u8], key: &[u8]) -> Result<Vec<u8>, aes_gcm::Error> {
     let gcm_key = GenericArray::from_slice(key);
     let cipher = Aes256Gcm::new(gcm_key);
     let nonce = Nonce::from_slice(b"unique nonce"); // 96-bits; unique per message
-    let plaintext = cipher.decrypt(nonce, data.as_ref())?;
-    println!("plaintext bytes: {:?}", plaintext);
+    let decoded_data = cipher.decrypt(nonce, data.as_ref())?;
     // convert bytes to string
-    let txt = String::from_utf8(plaintext.to_vec()).unwrap();
-    println!("plaintext string: {}", txt);
+    // let txt = String::from_utf8(plaintext.to_vec()).unwrap();
+    // println!("plaintext string: {}", txt);
     // let plaintext = cipher.decrypt(nonce, ciphertext.as_slice())?;
-    let res = plaintext.to_vec();
+    let res = decoded_data.to_vec();
     Ok(res)
 }
 
