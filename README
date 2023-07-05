@@ -1,0 +1,31 @@
+
+       _           _       _               
+      | |         | |     | |              
+      | |__  _   _| |_ ___| |__   _____  __
+      | '_ \| | | | __/ _ \ '_ \ / _ \ \/ /
+      | |_) | |_| | ||  __/ |_) | (_) >  < 
+      |_.__/ \__, |\__\___|_.__/ \___/_/\_\
+              __/ |                        
+             |___/            
+     
+
+A command line tool for encrypting and decrypting files using any file as a key
+
+===== What it's all about
+
+To generate a strong 32-byte key from a user-provided file, 
+Bytebox uses the scrypt key derivation function. 
+
+===== WHY IT'S SO SLOW?
+
+Key derivation functions like scrypt, PBKDF2, and bcrypt are specifically designed to make brute-force attacks more difficult. They do this by introducing a work factor (also known as iteration count or cost factor) which slows down the process of deriving a key from a password.
+
+===== LINKS
+
+For the actual encryption and decryption, we rely on the AES.
+https://en.wikipedia.org/wiki/Advanced_Encryption_Standard
+https://en.wikipedia.org/wiki/Galois/Counter_Mode
+https://godoc.org/golang.org/x/crypto/scrypt
+
+
+
